@@ -4,12 +4,13 @@
 import streamlit as st
 from snowflake_connector import get_snowflake_connection, list_databases, list_schemas, list_tables
 from eda_module import fetch_table_data, perform_eda, extensive_eda
+from ml_module import ml_page
 
 st.title("Analytics Tool Kit")
 st.subheader("Exploratory Data Analysis")
 
 # Page navigation with st.selectbox
-page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Other Pages"])
+page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Other Pages", "ML Development"])
 
 if page == "Home":
     # Connect to Snowflake
@@ -67,6 +68,15 @@ elif page == "EDA":
         extensive_eda(table_data)  # Call the EDA function
     else:
         st.warning("No data available for EDA. Please fetch the data from the 'Home' page first.")
+
+elif page == "ML Development":
+    # Check if table_data exists in session_state before using it
+    if 'table_data' in st.session_state:
+        table_data = st.session_state.table_data
+        ml_page(table_data)  # Call the EDA function
+    else:
+        st.warning("No data available for EDA. Please fetch the data from the 'Home' page first.")
+
 
 # Other pages for different functionalities (like the categorical visuals page)
 elif page == "Other Pages":

@@ -82,20 +82,16 @@ def feature_importance(df, target_column):
     # Separate features (X) and target (y)
     X = df.drop(columns=[target_column])
     y = df[target_column]
-    
     # Handle non-numeric columns by encoding them using LabelEncoder
     label_encoder = LabelEncoder()
-    
     # Apply LabelEncoder to each non-numeric column
     for column in X.columns:
         if X[column].dtype == 'object':  # Check if the column is non-numeric
             X[column] = label_encoder.fit_transform(X[column].astype(str))  # Convert to numeric labels
-    
     # Initialize the RandomForest model
     model = RandomForestClassifier()
     # Fit the model
     model.fit(X, y)
-
     # Extract feature importances
     feature_importances = pd.Series(model.feature_importances_, index=X.columns)
     # Plot feature importances
