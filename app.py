@@ -3,9 +3,9 @@ import snowflake.connector
 
 def connect_to_snowflake():
     conn = snowflake.connector.connect(
-        user="cmeringolo",
-        password="U*i9o0u8",
-        account="oycfeqg-uo43734"
+        user=st.secrets["snowflake"]["user"],
+        password=st.secrets["snowflake"]["password"],
+        account=st.secrets["snowflake"]["account"]
     )
     return conn
 
