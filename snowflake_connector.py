@@ -12,10 +12,34 @@ def get_snowflake_connection():
         account=st.secrets["snowflake"]["account"]
     )
 
-def list_tables(conn):
-    """Fetch the list of tables in the user's Snowflake database."""
+def list_databases(conn):
+    """Fetch the list of databases in Snowflake."""
     try:
-        query = "SHOW TABLES;"
+        query = "SHOW DATABASES;"
+        cursor = conn.cursor()
+        cursor.execute(query)
+        databases = cursor.fetchall()
+        return [row[1] for row in databases]
+    except Exception as e:
+        st.error(f"Error fetching database list: {e}")
+        return []
+
+def list_schemas(conn, database_name):
+    """Fetch the list of schemas for a given database."""
+    try:
+        query = f"SHOW SCHEMAS IN DATABASE {database_name};"
+        cursor = conn.cursor()
+        cursor.execute(query)
+        schemas = cursor.fetchall()
+        return [row[1] for row in schemas]
+    except Exception as e:
+        st.error(f"Error fetching schema list: {e}")
+        return []
+
+def list_tables(conn, database_name, schema_name):
+    """Fetch the list of tables for a given database and schema."""
+    try:
+        query = f"SHOW TABLES IN SCHEMA {database_name}.{schema_name};"
         cursor = conn.cursor()
         cursor.execute(query)
         tables = cursor.fetchall()

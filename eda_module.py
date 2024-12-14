@@ -32,10 +32,10 @@ def perform_eda(dataframe):
         st.write("No categorical columns found.")
 
 # Function to fetch data from Snowflake
-def fetch_table_data(conn, table_name):
+def fetch_table_data(conn, database_name, schema_name, table_name):
     """Fetch the content of a specific table from Snowflake."""
     try:
-        query = f"SELECT * FROM {table_name};"
+        query = f"SELECT * FROM {database_name}.{schema_name}.{table_name};"
         cursor = conn.cursor()
         cursor.execute(query)
         # Convert data to Pandas DataFrame
