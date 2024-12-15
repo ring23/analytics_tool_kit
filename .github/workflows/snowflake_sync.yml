@@ -10,20 +10,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Step 1: Check out the repository code
     - name: Check out code
       uses: actions/checkout@v3
 
-    - name: Install SnowSQL
+    # Step 2: Install SnowSQL and dependencies
+    - name: Install SnowSQL and dependencies
       run: |
         sudo apt-get update
         sudo apt-get install -y python3-pip
         pip install snowflake-connector-python
         pip install snowsql
 
-    - name: Zip files
+    # Step 3: Zip the repository files
+    - name: Zip application files
       run: zip -r app.zip .
 
-    - name: Upload to Snowflake
+    # Step 4: Upload the zip file to the Snowflake stage
+    - name: Upload to Snowflake stage
       env:
         SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
         SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
@@ -33,3 +37,15 @@ jobs:
         snowsql -a $SNOWFLAKE_ACCOUNT -u $SNOWFLAKE_USER -p $SNOWFLAKE_PASSWORD \
                 -w $SNOWFLAKE_WAREHOUSE \
                 -q "PUT file://app.zip @streamlit_stage OVERWRITE=TRUE;"
+
+    # Step 5: Update the Streamlit app in Snowflake
+    - name: Update Streamlit App in Snowflake
+      env:
+        SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+        SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+        SNOWFLAKE_PASSWORD: ${{ secrets.SNOWFLAKE_PASSWORD }}
+        SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+      run: |
+        snowsql -a $SNOWFLAKE_ACCOUNT -u $SNOWFLAKE_USER -p $SNOWFLAKE_PASSWORD \
+                -w $SNOWFLAKE_WAREHOUSE \
+                -q "CREATE OR REPLACE STREAMLIT APP my_streamlit_app FROM @streamlit_stage/app.zip;"
