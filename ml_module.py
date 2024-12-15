@@ -12,37 +12,39 @@ from eda_functions import plot_class_imbalance, plot_heatmap  # Import EDA funct
 def ml_page(df):
     st.title("Machine Learning Model Development")
 
+    # Check if the modified dataframe exists in session_state (from feature engineering)
+    if 'modified_df' in st.session_state:
+        df_selected = st.session_state.modified_df  # Use the modified dataset
+    else:
+        st.warning("No modified dataset found. Please go to the Feature Engineering page and commit changes.")
+        return
+    
     # Select columns to drop
     st.sidebar.subheader("Column Selection")
-    columns = df.columns.tolist()
+    columns = df_selected.columns.tolist()
     dropped_columns = st.sidebar.multiselect("Select columns to drop", columns, default=[])
 
     # Filter DataFrame based on selected columns
-    df_selected = df.drop(columns=dropped_columns)
+    df_selected = df_selected.drop(columns=dropped_columns)
     st.write("Filtered Dataset", df_selected)
 
     # Target variable selection
     target_column = st.sidebar.selectbox("Select target variable", df_selected.columns)
 
-    # Handle missing values
+    # Handle missing values (same process as before)
     st.sidebar.subheader("Handle Missing Values")
     missing_action = st.sidebar.radio("What to do with missing values?", ["Drop rows", "Fill with mean/median", "Fill with mode"])
     
     if missing_action == "Drop rows":
         df_selected = df_selected.dropna()
     elif missing_action == "Fill with mean/median":
-        # Handle numeric columns
         numeric_cols = df_selected.select_dtypes(include=[np.number]).columns
         df_selected[numeric_cols] = df_selected[numeric_cols].fillna(df_selected[numeric_cols].mean())
     elif missing_action == "Fill with mode":
-        # Handle categorical columns
         categorical_cols = df_selected.select_dtypes(include=['object']).columns
         for col in categorical_cols:
             df_selected[col] = df_selected[col].fillna(df_selected[col].mode()[0])
 
-    # Show cleaned data
-    st.write("Cleaned Dataset", df_selected)
-    
     # Preprocessing - Encode categorical variables
     categorical_cols = df_selected.select_dtypes(include=['object']).columns
     label_encoders = {}
