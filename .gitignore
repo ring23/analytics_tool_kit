@@ -4,3 +4,4 @@ __pycache__/
 *.pyc
 secrets.toml
 notes.txt
+TODO.txt
