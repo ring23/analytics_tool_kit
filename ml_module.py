@@ -7,16 +7,22 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from eda_functions import plot_class_imbalance, plot_heatmap  # Import EDA functions if needed
+from evaluation import *
+from explainability import *
+from model_config import *
 
 
 def ml_page(df):
     st.title("Machine Learning Model Development")
 
-    # Check if the modified dataframe exists in session_state (from feature engineering)
+    # Check if the modified dataframe exists in session_state (from feature engineering).
+    # If modified dataset exists, use that for modeling, otherwise use base dataset.
     if 'modified_df' in st.session_state:
         df_selected = st.session_state.modified_df  # Use the modified dataset
+    elif 'temp_df' in st.session_state:
+        df_selected = st.session_state.temp_df
     else:
-        st.warning("No modified dataset found. Please go to the Feature Engineering page and commit changes.")
+        st.warning("No dataset found. Please go to the Feature Engineering page and commit changes.")
         return
     
     # Select columns to drop
@@ -66,28 +72,63 @@ def ml_page(df):
     st.sidebar.subheader("Model Selection")
     model_type = st.sidebar.selectbox("Choose a model", ["Random Forest", "Logistic Regression"])
 
+    # Ensure the model_type matches the expected values
+    if model_type not in ["Random Forest", "Logistic Regression"]:
+        st.error(f"Invalid model type selected: {model_type}. Please choose from 'Random Forest' or 'Logistic Regression'.")
+        return  # Exit early to prevent further processing
+    
+    # Hyperparameter tuning options
     if model_type == "Random Forest":
-        model = RandomForestClassifier()
+        param_grid = {"n_estimators": [100, 200], "max_depth": [10, 20, 30]}
     elif model_type == "Logistic Regression":
-        model = LogisticRegression()
+        param_grid = {"C": [0.1, 1, 10]}
+
+    model = create_model(model_type)
+
+    # Hyperparameter tuning (optional)
+    use_random_search = st.sidebar.checkbox("Use Randomized Search for Hyperparameter Tuning")
+    if use_random_search:
+        best_model, best_params = tune_model(model, X_train, y_train, param_grid, use_random_search=True)
+        st.write(f"Best Model Parameters: {best_params}")
+    else:
+        best_model, best_params = tune_model(model, X_train, y_train, param_grid, use_random_search=False)
+        st.write(f"Best Model Parameters: {best_params}")
 
     # Train the model
     if st.sidebar.button("Train Model"):
-        model.fit(X_train, y_train)
+        best_model.fit(X_train, y_train)
 
         # Make predictions
-        y_pred = model.predict(X_test)
+        y_pred = best_model.predict(X_test)
 
         # Evaluate model
-        accuracy = accuracy_score(y_test, y_pred)
-        report = classification_report(y_test, y_pred)
+        accuracy, report, roc_auc = evaluate_classification_model(best_model, X_test, y_test)
 
         st.subheader(f"Model Evaluation - Accuracy: {accuracy:.4f}")
         st.text(report)
+        if roc_auc is not None:
+            st.write(f"ROC AUC: {roc_auc:.4f}")
+
+        # Show residual plot for regression (if regression model is selected)
+        if model_type == "Logistic Regression":
+            plot_residuals(y_test, y_pred)
+            show_confusion_matrix(best_model, X_test, y_test)
 
         # Show feature importance (for tree-based models like Random Forest)
         if model_type == "Random Forest":
-            feature_importances = pd.Series(model.feature_importances_, index=X.columns)
+            feature_importances = pd.Series(best_model.feature_importances_, index=X.columns)
             st.subheader("Feature Importance")
             st.bar_chart(feature_importances.sort_values(ascending=False))
+        
+        st.subheader(f"ROC CURVE")
+        plot_roc_curve(best_model, X_test, y_test)
+        st.subheader(f"Cross Validation")
+        cross_validation(best_model, X, y)
+        st.subheader(f"Feature Importance")
+        plot_feature_importance_final(best_model, X_train, X.columns)
+        st.subheader(f"Permutation Plot")
+        permutation_importance_plot(best_model,X_train, y_train, 'accuracy')
+        st.subheader(f"Calibration Curve")
+        calibration_curve_plot(best_model,X_test, y_test)
+
 
