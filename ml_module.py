@@ -96,7 +96,13 @@ def ml_page(df):
 
     # Train the model
     if st.sidebar.button("Train Model"):
-        best_model.fit(X_train, y_train)
+        model.fit(X_train, y_train)
+
+        # Save the trained model to session_state for deployment
+        st.session_state['best_model'] = model
+
+        # Feedback to the user
+        st.success("Model has been trained and saved successfully!")
 
         # Make predictions
         y_pred = best_model.predict(X_test)
