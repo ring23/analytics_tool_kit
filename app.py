@@ -7,13 +7,14 @@ from eda_module import fetch_table_data, perform_eda, extensive_eda
 from ml_module import ml_page
 from feature_engineering_module import *
 from ml_deployment import *
-from inference import *
+from inference_functions import *
+from prediction_page import *
 
 st.title("Analytics Tool Kit")
 st.subheader("Exploratory Data Analysis")
 
 # Page navigation with st.selectbox
-page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment","Inference", "Other Pages"])
+page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment","Inference", "Prediction Page", "Other Pages"])
 
 if page == "Home":
     # Connect to Snowflake
@@ -87,13 +88,17 @@ elif page == "ML Development":
         st.warning("No data available for EDA. Please fetch the data from the 'Home' page first.")
 
 elif page == "ML Deployment":
+
     # Debugging output to confirm session state
     st.write("Session State Keys:", st.session_state.keys())
 
     # Check if best_model exists in session_state
-    if 'best_model' in st.session_state:
-        best_model = st.session_state.best_model
-        deploy_model_page(best_model, st.session_state)  # Pass the model to deployment page
+    if 'trained_pipeline' in st.session_state:
+        trained_pipeline = st.session_state['trained_pipeline']
+        if isinstance(trained_pipeline, Pipeline):
+            deploy_model_page(trained_pipeline, st.session_state)  # Pass the model to deployment page
+        else:
+            st.error("Stored Model is not a valid pipeline. Please ensure model was trained correctly with preprocessing.")
     else:
         st.warning("No trained model available. Please train a model in the 'ML Development' page first.")
 
@@ -101,6 +106,12 @@ elif page == "Inference":
     st.title("Model Inference Page")
     # Allow user to select the model they want to use for inference
     select_model_and_infer()
+    # Select the dataset and run inference on it
+
+elif page == "Prediction Page":
+    st.title("rediction Page")
+    # Allow user to select the model they want to use for inference
+    prediction_page()
     # Select the dataset and run inference on it
 
 # Other pages for different functionalities (like the categorical visuals page)

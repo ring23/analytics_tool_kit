@@ -74,7 +74,7 @@ def upload_to_snowflake(model_file_name, db_name, schema_name, stage_name):
     except Exception as e:
         st.error(f"Failed to upload model to Snowflake stage: {e}")
 
-def deploy_model_page(best_model, session_state):
+def deploy_model_page(trained_pipeline, session_state):
     """
     Model deployment page for saving and deploying the trained model.
 
@@ -125,7 +125,7 @@ def deploy_model_page(best_model, session_state):
                 # Save model to Snowflake stage
                 model_file_name = f"{model_name}.pkl"  # Use model name from user input
                 with open(model_file_name, "wb") as file:
-                    pickle.dump(best_model, file)
+                    pickle.dump(trained_pipeline, file)
 
                 # Upload model to Snowflake stage
                 cur.execute(f"PUT file://{model_file_name} @{stage_name_upper}")

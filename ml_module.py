@@ -148,8 +148,6 @@ def ml_page(df):
 
         # Save the trained pipeline (both preprocessing and model) to session_state
         st.session_state['trained_pipeline'] = pipeline
-        # Save the model object to session_state
-        st.session_state['best_model'] = pipeline.named_steps['model']
 
         # Feedback to the user
         st.success("Model and pipeline have been trained and saved successfully!")
