@@ -7,12 +7,13 @@ from eda_module import fetch_table_data, perform_eda, extensive_eda
 from ml_module import ml_page
 from feature_engineering_module import *
 from ml_deployment import *
+from inference import *
 
 st.title("Analytics Tool Kit")
 st.subheader("Exploratory Data Analysis")
 
 # Page navigation with st.selectbox
-page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment","Other Pages"])
+page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment","Inference", "Other Pages"])
 
 if page == "Home":
     # Connect to Snowflake
@@ -95,6 +96,12 @@ elif page == "ML Deployment":
         deploy_model_page(best_model, st.session_state)  # Pass the model to deployment page
     else:
         st.warning("No trained model available. Please train a model in the 'ML Development' page first.")
+
+elif page == "Inference":
+    st.title("Model Inference Page")
+    # Allow user to select the model they want to use for inference
+    select_model_and_infer()
+    # Select the dataset and run inference on it
 
 # Other pages for different functionalities (like the categorical visuals page)
 elif page == "Other Pages":

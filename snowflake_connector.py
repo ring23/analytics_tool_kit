@@ -47,3 +47,19 @@ def list_tables(conn, database_name, schema_name):
     except Exception as e:
         st.error(f"Error fetching table list: {e}")
         return []
+
+# Fetch stages from Snowflake database and schema
+def list_stages(database, schema):
+    conn = get_snowflake_connection()
+    cursor = conn.cursor()
+    # Set the current database and schema
+    cursor.execute(f"USE DATABASE {database}")
+    cursor.execute(f"USE SCHEMA {schema}")
+    # Query to get the stages
+    query = f"SELECT STAGE_NAME FROM INFORMATION_SCHEMA.STAGES"
+    cursor.execute(query)
+    stages = cursor.fetchall()
+    
+    cursor.close()
+    conn.close()
+    return [stage[0] for stage in stages]

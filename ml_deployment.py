@@ -1,6 +1,7 @@
 import streamlit as st
 import joblib
 from snowflake_connector import *
+import pickle
 
 # Function to get the list of databases, schemas, and stages from Snowflake
 # Corrected code to ensure proper fetching of all schemas
@@ -124,7 +125,7 @@ def deploy_model_page(best_model, session_state):
                 # Save model to Snowflake stage
                 model_file_name = f"{model_name}.pkl"  # Use model name from user input
                 with open(model_file_name, "wb") as file:
-                    joblib.dump(best_model, file)
+                    pickle.dump(best_model, file)
 
                 # Upload model to Snowflake stage
                 cur.execute(f"PUT file://{model_file_name} @{stage_name_upper}")

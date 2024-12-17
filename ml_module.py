@@ -6,17 +6,48 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, classification_report
 from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV
+from sklearn.preprocessing import OneHotEncoder
 from eda_functions import plot_class_imbalance, plot_heatmap  # Import EDA functions if needed
 from evaluation import *
 from explainability import *
 from model_config import *
 
 
+# Function for feature preprocessing
+def create_preprocessing_pipeline(numeric_cols, categorical_cols):
+    # Define the transformations for numeric and categorical columns
+    numeric_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='mean')),
+        ('scaler', StandardScaler())
+    ])
+    
+    categorical_transformer = Pipeline(steps=[
+        ('imputer', SimpleImputer(strategy='constant', fill_value='missing')),
+        ('encoder', OneHotEncoder(handle_unknown='ignore'))
+    ])
+    
+    # Create column transformer
+    preprocessor = ColumnTransformer(
+        transformers=[
+            ('num', numeric_transformer, numeric_cols),
+            ('cat', categorical_transformer, categorical_cols)
+        ]
+    )
+    
+    return preprocessor
+
 def ml_page(df):
     st.title("Machine Learning Model Development")
 
     # Check if the modified dataframe exists in session_state (from feature engineering).
-    # If modified dataset exists, use that for modeling, otherwise use base dataset.
     if 'modified_df' in st.session_state:
         df_selected = st.session_state.modified_df  # Use the modified dataset
     elif 'temp_df' in st.session_state:
@@ -37,9 +68,25 @@ def ml_page(df):
     # Target variable selection
     target_column = st.sidebar.selectbox("Select target variable", df_selected.columns)
 
-    # Handle missing values (same process as before)
-    st.sidebar.subheader("Handle Missing Values")
-    missing_action = st.sidebar.radio("What to do with missing values?", ["Drop rows", "Fill with mean/median", "Fill with mode"])
+    # Handle missing values for the target variable explicitly
+    if target_column == 'PROFESSION' and df_selected[target_column].isnull().sum() > 0:
+        st.sidebar.subheader("Handle Missing Values in Target Variable")
+        target_missing_action = st.sidebar.radio("How to handle missing values in the target?", 
+                                                 ["Drop rows", "Fill with mode", "Fill with default"])
+        
+        if target_missing_action == "Drop rows":
+            df_selected = df_selected.dropna(subset=[target_column])
+        elif target_missing_action == "Fill with mode":
+            mode_value = df_selected[target_column].mode()[0]
+            df_selected[target_column] = df_selected[target_column].fillna(mode_value)
+        elif target_missing_action == "Fill with default":
+            default_value = "Unknown"  # Or any other default value
+            df_selected[target_column] = df_selected[target_column].fillna(default_value)
+
+    # Handle missing values for other columns (features)
+    st.sidebar.subheader("Handle Missing Values in Features")
+    missing_action = st.sidebar.radio("What to do with missing values in features?", 
+                                     ["Drop rows", "Fill with mean/median", "Fill with mode"])
     
     if missing_action == "Drop rows":
         df_selected = df_selected.dropna()
@@ -51,90 +98,68 @@ def ml_page(df):
         for col in categorical_cols:
             df_selected[col] = df_selected[col].fillna(df_selected[col].mode()[0])
 
-    # Preprocessing - Encode categorical variables
-    categorical_cols = df_selected.select_dtypes(include=['object']).columns
-    label_encoders = {}
-    
-    for col in categorical_cols:
-        le = LabelEncoder()
-        df_selected[col] = le.fit_transform(df_selected[col].astype(str))
-        label_encoders[col] = le
-
-    st.write("Dataset after Encoding", df_selected)
-    
     # Train-test split
     X = df_selected.drop(columns=[target_column])
     y = df_selected[target_column]
-    
+
+    # Ensure that there are no missing values in target variable y
+    if y.isnull().sum() > 0:
+        st.error(f"Target variable '{target_column}' contains missing values. Please handle them before proceeding.")
+        return
+
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Choose ML model
-    st.sidebar.subheader("Model Selection")
+    # Confirm the types and columns of X_train and X_test
+    st.write(f"X_train columns: {X_train.columns.tolist()}")
+    st.write(f"X_test columns: {X_test.columns.tolist()}")
+
+    # Ensure X_train and X_test are DataFrames with column names
+    X_train = pd.DataFrame(X_train, columns=X.columns)  # Restore column names for X_train
+    X_test = pd.DataFrame(X_test, columns=X.columns)  # Restore column names for X_test
+
+    # Define numeric and categorical columns based on the dataframe
+    numeric_cols = X_train.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_cols = X_train.select_dtypes(include=['object']).columns.tolist()
+
+    # Select the model type
     model_type = st.sidebar.selectbox("Choose a model", ["Random Forest", "Logistic Regression"])
 
-    # Ensure the model_type matches the expected values
-    if model_type not in ["Random Forest", "Logistic Regression"]:
-        st.error(f"Invalid model type selected: {model_type}. Please choose from 'Random Forest' or 'Logistic Regression'.")
-        return  # Exit early to prevent further processing
-    
-    # Hyperparameter tuning options
+    # Set the model based on the selected model type
     if model_type == "Random Forest":
-        param_grid = {"n_estimators": [100, 200], "max_depth": [10, 20, 30]}
+        model = RandomForestClassifier(random_state=42)
     elif model_type == "Logistic Regression":
-        param_grid = {"C": [0.1, 1, 10]}
+        model = LogisticRegression(random_state=42)
 
-    model = create_model(model_type)
+    # Create the full pipeline: preprocessing + model
+    pipeline = Pipeline(steps=[
+        ('preprocessor', create_preprocessing_pipeline(numeric_cols, categorical_cols)),
+        ('model', model)
+    ])
 
-    # Hyperparameter tuning (optional)
-    use_random_search = st.sidebar.checkbox("Use Randomized Search for Hyperparameter Tuning")
-    if use_random_search:
-        best_model, best_params = tune_model(model, X_train, y_train, param_grid, use_random_search=True)
-        st.write(f"Best Model Parameters: {best_params}")
-    else:
-        best_model, best_params = tune_model(model, X_train, y_train, param_grid, use_random_search=False)
-        st.write(f"Best Model Parameters: {best_params}")
+    # Debugging step: Check the pipeline before fitting
+    st.write("Pipeline before fitting:")
+    st.write(pipeline)
 
-    # Train the model
+    # Train the model when the button is pressed
     if st.sidebar.button("Train Model"):
-        model.fit(X_train, y_train)
+        # Fit the pipeline with training data
+        st.write("Fitting the pipeline with X_train and y_train...")
+        pipeline.fit(X_train, y_train)
 
-        # Save the trained model to session_state for deployment
-        st.session_state['best_model'] = model
+        # Save the trained pipeline (both preprocessing and model) to session_state
+        st.session_state['trained_pipeline'] = pipeline
+        # Save the model object to session_state
+        st.session_state['best_model'] = pipeline.named_steps['model']
 
         # Feedback to the user
-        st.success("Model has been trained and saved successfully!")
+        st.success("Model and pipeline have been trained and saved successfully!")
 
         # Make predictions
-        y_pred = best_model.predict(X_test)
+        y_pred = pipeline.predict(X_test)
 
-        # Evaluate model
-        accuracy, report, roc_auc = evaluate_classification_model(best_model, X_test, y_test)
+        # Evaluate the model
+        accuracy = accuracy_score(y_test, y_pred)
+        report = classification_report(y_test, y_pred)
 
         st.subheader(f"Model Evaluation - Accuracy: {accuracy:.4f}")
         st.text(report)
-        if roc_auc is not None:
-            st.write(f"ROC AUC: {roc_auc:.4f}")
-
-        # Show residual plot for regression (if regression model is selected)
-        if model_type == "Logistic Regression":
-            plot_residuals(y_test, y_pred)
-            show_confusion_matrix(best_model, X_test, y_test)
-
-        # Show feature importance (for tree-based models like Random Forest)
-        if model_type == "Random Forest":
-            feature_importances = pd.Series(best_model.feature_importances_, index=X.columns)
-            st.subheader("Feature Importance")
-            st.bar_chart(feature_importances.sort_values(ascending=False))
-        
-        st.subheader(f"ROC CURVE")
-        plot_roc_curve(best_model, X_test, y_test)
-        st.subheader(f"Cross Validation")
-        cross_validation(best_model, X, y)
-        st.subheader(f"Feature Importance")
-        plot_feature_importance_final(best_model, X_train, X.columns)
-        st.subheader(f"Permutation Plot")
-        permutation_importance_plot(best_model,X_train, y_train, 'accuracy')
-        st.subheader(f"Calibration Curve")
-        calibration_curve_plot(best_model,X_test, y_test)
-
-
