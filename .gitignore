@@ -1,5 +1,6 @@
-*.env
+*.envx
 venv/
+test_env/
 __pycache__/
 *.pyc
 secrets.toml
