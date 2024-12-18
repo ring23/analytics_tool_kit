@@ -149,15 +149,13 @@ def ml_page(df):
         # Save the trained pipeline (both preprocessing and model) to session_state
         st.session_state['trained_pipeline'] = pipeline
 
+        # Apply preprocessing to X_test and make predictions
+        X_test_preprocessed = pipeline.named_steps['preprocessor'].transform(X_test)  # Preprocess X_test
+        y_pred = model.predict(X_test_preprocessed)
+
+        # Store X_test and y_test in session state
+        st.session_state['X_test'] = X_test_preprocessed
+        st.session_state['y_test'] = y_test
+
         # Feedback to the user
         st.success("Model and pipeline have been trained and saved successfully!")
-
-        # Make predictions
-        y_pred = pipeline.predict(X_test)
-
-        # Evaluate the model
-        accuracy = accuracy_score(y_test, y_pred)
-        report = classification_report(y_test, y_pred)
-
-        st.subheader(f"Model Evaluation - Accuracy: {accuracy:.4f}")
-        st.text(report)

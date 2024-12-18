@@ -12,12 +12,14 @@ from prediction_page import *
 from schedule_inference import *
 from schedule_inference_functions import *
 from schedule_inference_page import *
+from ml_evaluation import *
+from stat_sig import *
 
 st.title("Analytics Tool Kit")
 st.subheader("Exploratory Data Analysis")
 
 # Page navigation with st.selectbox
-page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment", "Prediction Page", "Schedule Inference"])
+page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Evaluation", "ML Deployment", "Prediction Page", "Schedule Inference", "Stat Sig Calculator"])
 
 if page == "Home":
     # Connect to Snowflake
@@ -90,6 +92,10 @@ elif page == "ML Development":
     else:
         st.warning("No data available for EDA. Please fetch the data from the 'Home' page first.")
 
+elif page == "ML Evaluation":
+    # Check if best_model exists in session_state
+    display_evaluation_and_explainability()
+
 elif page == "ML Deployment":
 
     # Debugging output to confirm session state
@@ -118,7 +124,6 @@ elif page == "Schedule Inference":
     # Select the dataset and run inference on it
 
 # Other pages for different functionalities (like the categorical visuals page)
-elif page == "Other Pages":
-    st.title("Other Functionality")
-    st.write("Add more functionality here.")
+elif page == "Stat Sig Calculator":
+    statistical_significance_calculator()
 

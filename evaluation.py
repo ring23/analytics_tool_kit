@@ -2,20 +2,37 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.metrics import mean_squared_error, roc_auc_score, confusion_matrix, classification_report, accuracy_score, ConfusionMatrixDisplay, roc_curve, auc, make_scorer
 from sklearn.model_selection import cross_val_score, StratifiedKFold
-from sklearn.preprocessing import label_binarize
+from sklearn.preprocessing import label_binarize, LabelEncoder
 import numpy as np
 import streamlit as st
 import shap
+import pandas as pd
 
 
 # Function to plot residuals (for regression models)
 def plot_residuals(y_true, y_pred):
-    residuals = y_true - y_pred
-    sns.histplot(residuals, kde=True)
-    plt.title("Residuals Distribution")
-    plt.xlabel("Residuals")
-    plt.ylabel("Frequency")
-    st.pyplot(plt)
+    # Check if the task is regression or classification
+    if len(np.unique(y_true)) > 2:  # If it's regression (more than two unique values)
+        # Make sure both y_true and y_pred are numeric (convert if needed)
+        if isinstance(y_true, pd.Series) and y_true.dtype == 'object':
+            y_true = pd.to_numeric(y_true, errors='coerce')
+        if isinstance(y_pred, pd.Series) and y_pred.dtype == 'object':
+            y_pred = pd.to_numeric(y_pred, errors='coerce')
+        
+        # Calculate residuals
+        residuals = y_true - y_pred
+        
+        # Plot residuals
+        plt.figure(figsize=(8, 6))
+        plt.scatter(y_true, residuals)
+        plt.axhline(0, color='r', linestyle='--')
+        plt.xlabel("True Values")
+        plt.ylabel("Residuals")
+        plt.title("Residuals Plot")
+        plt.show()
+    else:
+        # For classification tasks, show confusion matrix or other relevant plots
+        st.subheader("Use Confusion Matrix for classifcation problems instead of residuals plot")
 
 # Function to evaluate classification models
 def evaluate_classification_model(model, X_test, y_test):

@@ -88,31 +88,6 @@ def plot_feature_importance(model, X, feature_names):
         st.pyplot(fig)
 
 
-def permutation_importance_plot(model, X_train, y_train, metric='accuracy'):
-    """
-    Function to compute and plot permutation feature importance.
-    
-    Parameters:
-    - model: Trained model (LogisticRegression or RandomForestClassifier)
-    - X_train: Training feature matrix
-    - y_train: Training target vector
-    - metric: Metric used to evaluate performance ('accuracy', 'roc_auc', etc.)
-    """
-    result = permutation_importance(model, X_train, y_train, scoring=metric, n_repeats=10, random_state=42)
-
-    # Create DataFrame for permutation importance
-    perm_importance = pd.DataFrame({
-        'Feature': X_train.columns,
-        'Importance': result.importances_mean
-    })
-    perm_importance = perm_importance.sort_values(by='Importance', ascending=False)
-
-    st.subheader(f"Permutation Feature Importance ({metric})")
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.barplot(x='Importance', y='Feature', data=perm_importance, ax=ax)
-    st.pyplot(fig)
-
-
 def calibration_curve_plot(best_model, X_test, y_test):
     """
     Plot calibration curves for binary or multi-class classification.
