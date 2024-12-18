@@ -9,12 +9,15 @@ from feature_engineering_module import *
 from ml_deployment import *
 from inference_functions import *
 from prediction_page import *
+from schedule_inference import *
+from schedule_inference_functions import *
+from schedule_inference_page import *
 
 st.title("Analytics Tool Kit")
 st.subheader("Exploratory Data Analysis")
 
 # Page navigation with st.selectbox
-page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment","Inference", "Prediction Page", "Other Pages"])
+page = st.sidebar.selectbox("Select a Page", options=["Home", "EDA", "Feature Engineering", "ML Development", "ML Deployment", "Prediction Page", "Schedule Inference"])
 
 if page == "Home":
     # Connect to Snowflake
@@ -102,16 +105,16 @@ elif page == "ML Deployment":
     else:
         st.warning("No trained model available. Please train a model in the 'ML Development' page first.")
 
-elif page == "Inference":
-    st.title("Model Inference Page")
-    # Allow user to select the model they want to use for inference
-    select_model_and_infer()
-    # Select the dataset and run inference on it
-
 elif page == "Prediction Page":
-    st.title("rediction Page")
+    st.title("Prediction Page")
     # Allow user to select the model they want to use for inference
     prediction_page()
+    # Select the dataset and run inference on it
+
+elif page == "Schedule Inference":
+    st.title("Schedule Inference")
+    # Allow user to select the model they want to use for inference
+    schedule_inference_page(get_snowflake_connection())
     # Select the dataset and run inference on it
 
 # Other pages for different functionalities (like the categorical visuals page)

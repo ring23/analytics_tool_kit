@@ -3,6 +3,7 @@
 
 import streamlit as st
 import snowflake.connector
+import pandas as pd
 
 def get_snowflake_connection():
     """Establish a connection to Snowflake."""
@@ -11,6 +12,20 @@ def get_snowflake_connection():
         password=st.secrets["snowflake"]["password"],
         account=st.secrets["snowflake"]["account"]
     )
+
+def list_warehouses(conn):
+    """Retrieve the list of available warehouses."""
+    query = "SHOW WAREHOUSES"
+    try:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        warehouses = [row[0] for row in cursor.fetchall()]  # Assuming the warehouse name is in the second column
+        return warehouses
+    except Exception as e:
+        st.error(f"Error fetching warehouses: {e}")
+        return []
+    finally:
+        cursor.close()
 
 def list_databases(conn):
     """Fetch the list of databases in Snowflake."""
@@ -63,3 +78,23 @@ def list_stages(database, schema):
     cursor.close()
     conn.close()
     return [stage[0] for stage in stages]
+
+# Clean the DataFrame to handle missing values based on data type
+def clean_dataframe_for_snowflake(df):
+    """
+    Replace NaN with None (NULL) for compatibility with Snowflake.
+    Ensure numeric columns have valid values.
+    Clean column names to ensure compatibility with Snowflake (e.g., uppercase).
+    """
+    # Clean column names (convert to uppercase)
+    df.columns = [col.upper() for col in df.columns]
+
+    # Replace NaN with None (SQL NULL) for compatibility
+    df = df.where(pd.notnull(df), None)
+
+    # Ensure numeric columns contain only numeric or NULL values
+    for column in df.select_dtypes(include=['number']).columns:
+        df[column] = pd.to_numeric(df[column], errors='coerce')  # Convert invalid entries to NaN
+        df[column] = df[column].where(pd.notnull(df[column]), None)  # Replace NaN with None
+
+    return df
