@@ -6,3 +6,5 @@ __pycache__/
 secrets.toml
 notes.txt
 TODO.txt
+*.pkl
+*.pickle
