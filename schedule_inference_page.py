@@ -34,33 +34,33 @@ def schedule_inference_page(conn):
     output_table = new_table_name if new_table_name else st.selectbox("Select Output Table", output_table_options)
 
     # Save Configuration Button
-    if st.button("Save Configuration"):
+    if st.button("Generate ipynb notebook"):
         try:
-            if inference_type == "Real-Time":
-                # Create Stream in Snowflake for real-time inference
-                create_stream_query = f"""
-                CREATE OR REPLACE STREAM {database}.{schema}.{stream_name}
-                ON TABLE {database}.{schema}.{input_table}
-                SHOW_INITIAL_ROWS = TRUE;
-                """
-                cursor = conn.cursor()
-                cursor.execute(create_stream_query)
-                conn.commit()
+            # if inference_type == "Real-Time":
+            #     # Create Stream in Snowflake for real-time inference
+            #     create_stream_query = f"""
+            #     CREATE OR REPLACE STREAM {database}.{schema}.{stream_name}
+            #     ON TABLE {database}.{schema}.{input_table}
+            #     SHOW_INITIAL_ROWS = TRUE;
+            #     """
+            #     cursor = conn.cursor()
+            #     cursor.execute(create_stream_query)
+            #     conn.commit()
 
-                # Generate and provide the downloadable .ipynb file
-                notebook_filename = generate_inference_notebook(database, schema, input_table, stream_name, model_file, output_table)
-                st.success(f"Stream '{stream_name}' created successfully!")
-                st.download_button(
-                    label="Download Inference Notebook",
-                    data=open(notebook_filename, "r").read(),
-                    file_name=notebook_filename,
-                    mime="application/octet-stream"
-                )
+            # Generate and provide the downloadable .ipynb file
+            notebook_filename = generate_inference_notebook(database, schema, input_table, stream_name, model_file, output_table, warehouse, inference_type, schedule, output_file = "inference_notebook.ipynb")
+            st.success("Noteboo created successfully!")
+            st.download_button(
+                label="Download Inference Notebook",
+                data=open(notebook_filename, "r").read(),
+                file_name=notebook_filename,
+                mime="application/octet-stream"
+            )
 
-            elif inference_type == "Batch":
-                # Call function to handle batch inference configuration (creating task, stored proc)
-                save_inference_configuration(conn, warehouse, database, schema, stage, model_file, 
-                                              input_table, inference_type, schedule, task_name, stream_name, proc_name, output_table)
+            # elif inference_type == "Batch":
+            #     # Call function to handle batch inference configuration (creating task, stored proc)
+            #     save_inference_configuration(conn, warehouse, database, schema, stage, model_file, 
+            #                                   input_table, inference_type, schedule, task_name, stream_name, proc_name, output_table)
 
         except Exception as e:
             st.error(f"Error saving configuration: {e}")

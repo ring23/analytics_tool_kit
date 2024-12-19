@@ -115,59 +115,134 @@ def save_inference_configuration(conn, warehouse, database, schema, stage_locati
         conn.close()
 
 
-def generate_inference_notebook(database, schema, input_table, stream_name, model_file, output_table):
-    # Create the notebook content in JSON format with the necessary structure
-    notebook_content = {
-        "cells": [
-            {
-                "cell_type": "code",
-                "execution_count": None,
-                "id": "cell_1",
-                "metadata": {},
-                "outputs": [],
-                "source": [
-                    "import snowflake.connector\n",
-                    "import pandas as pd\n\n",
-                    "# Connect to Snowflake\n",
-                    "conn = snowflake.connector.connect(\n",
-                    "    user='your_user',\n",
-                    "    password='your_password',\n",
-                    "    account='your_account',\n",
-                    "    warehouse='your_warehouse',\n",
-                    "    database='{database}',\n",
-                    "    schema='{schema}'\n",
-                    ")\n\n",
-                    "# Query to get data from the stream\n",
-                    "stream_query = \"SELECT * FROM {database}.{schema}.{input_table} WHERE METADATA$ACTION = 'INSERT'\"\n",
-                    "df = pd.read_sql(stream_query, conn)\n\n",
-                    "# Inference logic: Replace with your actual model inference logic\n",
-                    "def run_inference(data, model_file):\n",
-                    "    # Example logic for inference - replace with actual logic\n",
-                    "    return \"inference_result_mock\"\n\n",
-                    "# Apply inference to the dataset\n",
-                    "df['inference_result'] = df['column_name'].apply(lambda x: run_inference(x, '{model_file}'))\n\n",
-                    "# Display the results (For testing, you can replace with actual actions later)\n",
-                    "print(df.head())\n\n",
-                    "# Close connection\n",
-                    "conn.close()\n"
-                ]
-            }
-        ],
+def generate_inference_notebook(database, schema, input_table, stream_name, model_file, output_table, warehouse, inference_type, schedule, output_file="inference_notebook.ipynb"):
+    # Placeholder instructions in the first Markdown cell
+    cell_1 = {
+        "cell_type": "markdown",
         "metadata": {},
+        "source": [
+            "# Instructions\n",
+            "This notebook is designed to run scoring on a saved model in Snowflake.\n",
+            "Follow the steps in each cell to perform the inference."
+        ]
+    }
+
+    # Imports in the second Python cell
+    cell_2 = {
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": None,
+        "outputs": [],
+        "source": [
+            "# Import necessary libraries\n",
+            "from snowflake.snowpark import Session\n",
+            "import pandas as pd\n"
+        ]
+    }
+
+    # Initialize cell_3 and cell_4 as None to ensure they are always present
+    cell_3 = None
+    cell_4 = None
+
+    # Logic for Real-Time vs Batch inference
+    if inference_type == 'Real-Time':
+        # Create a Snowflake STREAM for real-time inference
+        stream_sql = f"CREATE OR REPLACE STREAM {database}.{schema}.{stream_name} ON TABLE {database}.{schema}.{input_table} SHOW_INITIAL_ROWS = TRUE APPEND_ONLY = TRUE;"
+        cell_3 = {
+            "cell_type": "code",
+            "metadata": {
+                "language": "sql"
+            },
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "-- Create Stream for Real-Time Inference\n",
+                f"{stream_sql}\n"
+            ]
+        }
+        # Add a new cell to run the SELECT * query from the stream
+        select_sql = f"SELECT * FROM {database}.{schema}.{stream_name} WHERE METADATA$ACTION = 'INSERT';"
+        cell_4 = {
+            "cell_type": "code",
+            "metadata": {
+                "language": "sql"
+            },
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "-- Select data from the Stream\n",
+                f"{select_sql}\n"
+            ]
+        }
+
+    elif inference_type == 'Batch':
+        # Create a Snowflake TASK for batch inference
+        task_sql = f"""
+        CREATE OR REPLACE TASK {schema}.{stream_name}_task
+        WAREHOUSE = {warehouse}
+        SCHEDULE = '{schedule}' 
+        AS
+        CALL run_inference_procedure('{model_file}', '{output_table}');
+        """
+        cell_4 = {
+            "cell_type": "code",
+            "metadata": {
+                "language": "sql"
+            },
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "-- Create Task for Batch Inference\n",
+                f"{task_sql}\n"
+            ]
+        }
+
+    # Load results into a DataFrame in the fifth Python cell
+    cell_5 = {
+        "cell_type": "code",
+        "metadata": {},
+        "execution_count": None,
+        "outputs": [],
+        "source": [
+            "# Execute the query and load the results into a Snowpark DataFrame\n",
+            "# Ensure the session is already initialized in the notebook environment\n",
+            "df_snowflake = cell4.to_pandas()\n",
+            "df_snowflake.head()\n"
+        ]
+    }
+
+    # Notebook structure
+    notebook_content = {
+        "cells": [cell_1, cell_2] + ([cell_3] if cell_3 else []) + ([cell_4] if cell_4 else []) + [cell_5],
+        "metadata": {
+            "kernelspec": {
+                "display_name": "Python 3",
+                "language": "python",
+                "name": "python3"
+            },
+            "language_info": {
+                "codemirror_mode": {
+                    "name": "ipython",
+                    "version": 3
+                },
+                "file_extension": ".py",
+                "mimetype": "text/x-python",
+                "name": "python",
+                "nbconvert_exporter": "python",
+                "pygments_lexer": "ipython3",
+                "version": "3.8"
+            }
+        },
         "nbformat": 4,
         "nbformat_minor": 5
     }
-    
-    # Define the notebook filename
-    notebook_filename = "real_time_inference_notebook.ipynb"
-    
-    # Write the notebook content to the .ipynb file
-    with open(notebook_filename, "w") as f:
+
+    # Save the notebook to a file
+    with open(output_file, "w") as f:
         json.dump(notebook_content, f, indent=4)
 
     # Return the filename
-    return notebook_filename
-
+    return output_file
 
 
 
