@@ -115,6 +115,8 @@ def save_inference_configuration(conn, warehouse, database, schema, stage_locati
         conn.close()
 
 
+import json
+
 def generate_inference_notebook(database, schema, input_table, stream_name, model_file, output_table, warehouse, inference_type, schedule, output_file="inference_notebook.ipynb"):
     # Placeholder instructions in the first Markdown cell
     cell_1 = {
@@ -143,6 +145,9 @@ def generate_inference_notebook(database, schema, input_table, stream_name, mode
     # Initialize cell_3 and cell_4 as None to ensure they are always present
     cell_3 = None
     cell_4 = None
+    cell_5 = None
+    cell_6 = None  # For creating `inference_table` and the necessary trigger
+    cell_7 = None
 
     # Logic for Real-Time vs Batch inference
     if inference_type == 'Real-Time':
@@ -175,6 +180,70 @@ def generate_inference_notebook(database, schema, input_table, stream_name, mode
             ]
         }
 
+        # Create a cell that creates the `inference_table` whenever a change is triggered in the stream
+        create_table_sql = f"""
+        CREATE OR REPLACE TABLE {database}.{schema}.inference_table (
+            ID INT,
+            VALUE INT
+        );
+        """
+        insert_record_sql = f"""
+        INSERT INTO {database}.{schema}.inference_table (ID, Value)
+        SELECT 1,5;
+        """
+        cell_5 = {
+            "cell_type": "code",
+            "metadata": {
+                "language": "sql"
+            },
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "-- Create `inference_table` and insert record when stream is triggered\n",
+                f"{create_table_sql}\n",
+                f"{insert_record_sql}\n"
+            ]
+        }
+
+        # Create a Snowflake TASK to trigger the insert when the stream is updated
+        task_sql = f"""
+        CREATE OR REPLACE TASK {database}.{schema}.{stream_name}_task
+        WAREHOUSE = {warehouse}
+        SCHEDULE = '1 MINUTE'
+        WHEN SYSTEM$STREAM_HAS_DATA('ANALYTICS_TOOL_KIT.PUBLIC.MYSICKSTREAM2')
+        AS
+        BEGIN
+            -- Execute stream logic to insert a record when data changes
+            INSERT INTO {database}.{schema}.inference_table (ID, VALUE)
+            SELECT ID, 5
+            FROM {database}.{schema}.{stream_name}
+            WHERE METADATA$ACTION = 'INSERT';
+        END;
+        """
+        cell_6 = {
+            "cell_type": "code",
+            "metadata": {
+                "language": "sql"
+            },
+            "execution_count": None,
+            "outputs": [],
+            "source": [
+                "-- Create Task for Real-Time Inference Trigger\n",
+                f"{task_sql}\n"
+            ]
+        }
+
+        # Add the markdown cell reminding the user to resume the task
+        cell_7 = {
+            "cell_type": "markdown",
+            "metadata": {},
+            "source": [
+                "# Reminder\n",
+                "After creating the task, go to Snowflake, find your task under the 'Tasks' section in the UI, and click the three dots in the top right corner, and click 'Resume' button in the top right corner to start the task.\n"
+                "Your task has been created and is watching the stream on your scoring table looking for insert records. When a record is inserted into your scoring table, the Stream will fire off the task to perform inferecne"
+            ]
+        }
+
     elif inference_type == 'Batch':
         # Create a Snowflake TASK for batch inference
         task_sql = f"""
@@ -184,7 +253,7 @@ def generate_inference_notebook(database, schema, input_table, stream_name, mode
         AS
         CALL run_inference_procedure('{model_file}', '{output_table}');
         """
-        cell_4 = {
+        cell_8 = {
             "cell_type": "code",
             "metadata": {
                 "language": "sql"
@@ -197,23 +266,9 @@ def generate_inference_notebook(database, schema, input_table, stream_name, mode
             ]
         }
 
-    # Load results into a DataFrame in the fifth Python cell
-    cell_5 = {
-        "cell_type": "code",
-        "metadata": {},
-        "execution_count": None,
-        "outputs": [],
-        "source": [
-            "# Execute the query and load the results into a Snowpark DataFrame\n",
-            "# Ensure the session is already initialized in the notebook environment\n",
-            "df_snowflake = cell4.to_pandas()\n",
-            "df_snowflake.head()\n"
-        ]
-    }
-
     # Notebook structure
     notebook_content = {
-        "cells": [cell_1, cell_2] + ([cell_3] if cell_3 else []) + ([cell_4] if cell_4 else []) + [cell_5],
+        "cells": [cell_1, cell_2, cell_3, cell_4, cell_5, cell_6, cell_7] + ([cell_8] if 'cell_8' in locals() else []),
         "metadata": {
             "kernelspec": {
                 "display_name": "Python 3",
